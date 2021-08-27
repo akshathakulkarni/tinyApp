@@ -7,6 +7,15 @@ app.use(bodyParser.urlencoded({extended: true}));
 
 app.set('view engine', 'ejs');
 
+function generateRandomString(length, chars) {
+  let result = '';
+    for (let i = length; i > 0; i--) {
+        result += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return result;
+}
+generateRandomString(6, '12345abcdeFG');
+
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
