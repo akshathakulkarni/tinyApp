@@ -14,12 +14,18 @@ function generateRandomString(length, chars) {
     }
     return result;
 }
-generateRandomString(6, '12345abcdeFG');
+const shortUrl = generateRandomString(6, '12345abcdeFG');
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "9sm5xK": "http://www.google.com",
 };
+
+function updateDatabase(urlDatabase) {
+  urlDatabase[shortUrl] = 'http://www.in-tac.ca';
+}
+updateDatabase(urlDatabase);
+console.log(urlDatabase);
 
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -43,7 +49,14 @@ app.get("/urls/:shortURL", (req, res) => {
 });
 app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
-  res.send("Ok");         // Respond with 'Ok' (we will replace this)
+  res.send(`urls/:${shortUrl}`);         // Respond with 'Ok' (we will replace this)
+});
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL]
+  if (!longURL){
+    return res.send('Requested shortURL is not defined in the urlDatabase');
+  }
+  res.redirect(longURL);
 });
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
