@@ -5,6 +5,9 @@ const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+
 app.set('view engine', 'ejs');
 
 function generateRandomString(length, chars) {
@@ -52,6 +55,7 @@ app.post("/urls", (req, res) => {
   res.send(`urls/:${shortUrl}`);         // Respond with 'Ok' (we will replace this)
 });
 app.get("/u/:shortURL", (req, res) => {
+  //console.log(req);
   const longURL = urlDatabase[req.params.shortURL]
   if (!longURL){
     return res.send('Requested shortURL is not defined in the urlDatabase');
@@ -59,8 +63,16 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 app.post("/urls/:shortURL/delete", (req, res) => {
-  delete urlDatabase[req.params.shortURL];
-  res.redirect("urls");
+  const shortURL = req.params.shortURL;
+  delete urlDatabase[shortURL];
+  res.redirect("/urls");
+});
+app.post("/urls/:shortURL", (req, res) => {
+  const newlongURL = req.body.longURL;
+  shortURL = req.params.shortURL;
+  urlDatabase[shortURL] = newlongURL;
+  console.log(urlDatabase);
+  res.redirect("/urls");
 });
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
