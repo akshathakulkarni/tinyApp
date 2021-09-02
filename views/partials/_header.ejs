@@ -11,16 +11,16 @@
       </div>
     </div>
     <% if(user) { %>
-      <h5>Logged In As:&nbsp</h5>  <!-- &nbsp(non-breaking space) for adding space after header -->
-      <h4><%= user %>&nbsp&nbsp</h4> 
+      <h6>Logged In As:&nbsp</h6>  <!-- &nbsp(non-breaking space) for adding space after header -->
+      <h5><%= user.email %>&nbsp&nbsp</h5> 
       <form method="POST", action="/logout">
         <button class="btn btn-primary" type="submit">Logout</button>
       </form>
     <% } else { %>
-      <form method="POST", action="/login">
-        <input type="text" name="name" value="username">
-        <button class="btn btn-primary" type="submit">Login</button>
-      </form>
+      <div class="navbar-nav">
+        <a class="nav-item nav-link" href="/login"><b>Login</b></a>
+        <a class="nav-item nav-link" href="/register"><b>Register</b></a>
+      </div>
     <% } %>
   </nav>
 </header> 
