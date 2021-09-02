@@ -10,9 +10,17 @@
         <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
       </div>
     </div>
-    <form method="POST", action="/login">
-      <input type="name" value="username">
-      <button class="btn btn-primary" type="submit">Submit</button>
-    </form>
+    <% if(user) { %>
+      <h5>Logged In As:&nbsp</h5>  <!-- &nbsp(non-breaking space) for adding space after header -->
+      <h4><%= user %>&nbsp&nbsp</h4> 
+      <form method="POST", action="/logout">
+        <button class="btn btn-primary" type="submit">Logout</button>
+      </form>
+    <% } else { %>
+      <form method="POST", action="/login">
+        <input type="text" name="name" value="username">
+        <button class="btn btn-primary" type="submit">Login</button>
+      </form>
+    <% } %>
   </nav>
 </header> 
