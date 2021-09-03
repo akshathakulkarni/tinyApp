@@ -8,6 +8,8 @@ app.use(bodyParser.urlencoded({extended: true}));
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
+const bcrypt = require('bcrypt');
+
 app.set('view engine', 'ejs');
 
 function generateRandomString(length, chars) {
@@ -21,32 +23,38 @@ const shortUrl = generateRandomString(6, '12345abcdeFG');
 const randomId = generateRandomString(6, 'ert5437cvxTM&');
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
-};
+  "b2xVn2": { longURL : "http://www.lighthouselabs.ca", userID : "user2RandomID" },
+  "9sm5xK": { longURL : "http://www.google.com", userID : "user2RandomID" }
+ };
 
-const users = { 
+const users = {   
   "userRandomID": {
     id: "userRandomID", 
     email: "user@example.com", 
-    password: "purple-monkey-dinosaur"
+    password: bcrypt.hashSync("purple-monkey-dinosaur", 10)
   },
  "user2RandomID": {
     id: "user2RandomID", 
     email: "user2@example.com", 
-    password: "dishwasher-funk"
+    password: bcrypt.hashSync("dishwasher-funk", 10)
   }
 }
 
 function updateDatabase(urlDatabase) {
-  urlDatabase[shortUrl] = 'http://www.in-tac.ca';
+  urlDatabase[shortUrl] =  {
+    longURL : 'http://www.in-tac.ca',
+    userID : randomId
+  };
 }
 updateDatabase(urlDatabase);
 console.log(urlDatabase);
 
 function getUserInfoByEmail(loggedInEmail) {
+  
   for (let userId in users) {
     if (loggedInEmail === users[userId].email) {
+      console.log('IngetuserEmail=', loggedInEmail);
+      console.log('userId from users', users[userId].email);
       return true;
     }
   }
@@ -54,10 +62,33 @@ function getUserInfoByEmail(loggedInEmail) {
 
 function getUserInfoByPassword(enteredPassword) {
   for (let userId in users) {
-    if (enteredPassword === users[userId].password) {
+    if (bcrypt.compareSync(enteredPassword, users[userId].password)) {
       return true;
     }
   }
+}
+
+function getUserInfoByID(userid) {
+  for (let key in users) {
+    if (userid === users[key].id) {
+      console.log('USerID from getUserinfobyId function', userid)
+      return true;
+    }
+  }
+} 
+
+function getUrlsForUserId(userId) {
+  console.log('userid', userId);
+  let result = {};
+  for (let key in urlDatabase) {
+    if (urlDatabase[key].userID === userId) {
+      // return urlDatabase[user];
+      let temp = {longURL: urlDatabase[key].longURL};
+      result[key] = temp; 
+    }
+  }
+  console.log("in function getURLS",result);
+  return result;
 }
 
 app.get("/", (req, res) => {
@@ -74,37 +105,62 @@ app.get("/hello", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const userId = req.cookies["user_id"];
+  console.log('user id in home page', userId);
   const user = users[userId];
+  //to get all the urls for this specific user
+  let result = getUrlsForUserId(userId);
+
   const templateVars = { 
-    urls: urlDatabase,
+    urls: result,
     user
   };
-  res.render("urls_index", templateVars);
+  //console.log("result = ",result);
+  res.render("urls_index",templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
   const templateVars = {
     user: users[req.cookies["user_id"]]
   };
+  if (templateVars.user === undefined) {
+    return res.redirect('/login');
+  }
   res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
+  console.log('data1', req.params.shortURL);
+  console.log('data...', urlDatabase[req.params.shortURL].longURL);
+  let longUrl = urlDatabase[req.params.shortURL].longURL;
+  let userID = req.cookies["user_id"];
+  let user_id = '';
+  if (getUserInfoByID(userID)) {
+    user_id = userID;
+  }
   const templateVars = { 
     shortURL: req.params.shortURL, 
-    longURL: "http://www.lighthouselabs.ca",
-    user: users[req.cookies["user_id"]]
+    longURL: longUrl,
+    user: users[user_id]
   };
+  console.log('templatevars...', templateVars);
   res.render("urls_show", templateVars);
 });
 
 app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
-  res.send(`urls/:${shortUrl}`);         // Respond with 'Ok' (we will replace this)
+  let shortURL = generateRandomString(6, '12345abcdeFG');
+  let temp = {
+    longURL: req.body.longURL,
+    userID: req.cookies["user_id"]
+  }
+  urlDatabase[shortURL] = temp;
+
+  res.redirect("/urls");         // Respond with 'Ok' (we will replace this)
 });
 
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL]
+  shortURL = req.params.shortURL;
+  const longURL = urlDatabase[shortURL].longURL;
   if (!longURL){
     return res.send('Requested shortURL is not defined in the urlDatabase');
   }
@@ -112,35 +168,67 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  const shortURL = req.params.shortURL;
-  delete urlDatabase[shortURL];
-  res.redirect("/urls");
+  const Id = req.cookies["user_id"];
+  console.log('id', Id);
+  console.log('users', users);
+  for (let key in users) {
+    if (Id === users[key].id) {
+      console.log('userdata', users[key].id);
+      const shortURL = req.params.shortURL;
+      delete urlDatabase[shortURL];
+      return res.redirect("/urls");
+    } else {
+      continue;     
+    }
+  }
+  return res.send('Only registered users have permission to delete their urls');
 });
 
 app.post("/urls/:shortURL", (req, res) => {
-  const newlongURL = req.body.longURL;
-  shortURL = req.params.shortURL;
-  urlDatabase[shortURL] = newlongURL;
-  res.redirect("/urls");
+  const ID = req.cookies["user_id"];
+  for (let key in users) {
+    if (ID === users[key].id) {
+      const newlongURL = req.body.longURL;
+      shortURL = req.params.shortURL;
+      urlDatabase[shortURL] = {
+      longURL : newlongURL,
+      userID : req.cookies["user_id"]
+      }
+      console.log('url', urlDatabase);
+      res.redirect("/urls");
+    } else {
+      continue;
+    }
+    res.send('Only registered users have permission to edit/update their urls');
+  }
 });
 
 app.post("/login", (req, res) => {
-  if (!getUserInfoByEmail(req.body.email)) {
-    return res.send('Error : StatusCode 403. Entered email has not been registered');
-  }
-  if (getUserInfoByEmail(req.body.email)) {
-    if (!getUserInfoByPassword(req.body.password)) {
+  const emailFromUser = req.body.email;
+  const passwordFromUser = req.body.password;
+  console.log('email - cleartext...', req.body.email);
+  console.log('password - cleartext...', req.body.password);
+  console.log('passwordFromUser...', passwordFromUser);
+
+  if (getUserInfoByEmail(emailFromUser)) {
+    console.log('in login', users);
+    if (getUserInfoByPassword(passwordFromUser)) {
+      console.log('users=', users);
+      
+      for (let user in users) {
+        if (req.body.email === users[user].email) {
+          user_id = users[user].id;
+          res.cookie("user_id", user_id);
+        }
+      }
+    } else {
       return res.send('Error : StatusCode 403. Entered password does not match with registered password');
     }
+  } else {
+    return res.send('Error : StatusCode 403. Entered email has not been registered');
   }
-  const user = {
-    id : randomId,
-    email: req.body.email,
-    password: req.body.password
-  };
-  users[randomId] = user;
-  console.log(users);
-  res.cookie("user_id", randomId);
+  console.log('logged in', users);
+  
   res.redirect("/urls");
 });
 
@@ -148,7 +236,7 @@ app.get("/login", (req, res) => {
   const templateVars = {
     user: users[req.cookies["user_id"]]
   }
-  console.log('user...', templateVars);
+  console.log('user with cookie id', templateVars);
   res.render("login", templateVars);
 });
 
@@ -171,14 +259,17 @@ app.post("/register", (req, res) => {
   if (getUserInfoByEmail(req.body.email)) {
     return res.send('Error : StatusCode 400. Entered email already exists.');
   }
+  console.log('plainTextPasswordFromRegister - ', req.body.password);
+  const hashedPassword = bcrypt.hashSync(req.body.password, 10);
+  console.log('hashedpassword', hashedPassword);
   const user = {
-    id : randomId,
+    id : generateRandomString(6, '12345abcdeFG'),
     email: req.body.email,
-    password: req.body.password
+    password: hashedPassword
   };
-  users[randomId] = user;
-  console.log(users);
-  res.cookie("user_id", randomId);
+  users[user.id] = user;
+  console.log('Register', users);
+  res.cookie("user_id", user.id);
   res.redirect("/urls");
 });
 
