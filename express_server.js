@@ -34,7 +34,7 @@ const users = {
 };
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  res.redirect('/urls');
 });
 
 app.get("/urls.json", (req, res) => {
@@ -100,7 +100,9 @@ app.get("/u/:shortURL", (req, res) => {
   if (!longURL) {
     return res.send('Requested shortURL is not defined in the urlDatabase');
   }
-  res.redirect(longURL);
+  if ((longURL.startsWith('http://'))) {
+    return res.redirect(longURL);
+  }
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -158,6 +160,9 @@ app.get("/login", (req, res) => {
   const templateVars = {
     user: users[req.session.user_id]
   };
+  if (req.session.user_id) {
+    return res.redirect('/urls');
+  }
   res.render("login", templateVars);
 });
 
